@@ -1,37 +1,90 @@
+-- Yoriichi Menu (versão corrigida e incrementada)
+-- Cole em LocalScript (PlayerGui). Feito para PC e Mobile.
+
+-- Services
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
+
+-- Player (aguarda se necessário)
 local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    LocalPlayer = Players.LocalPlayer
+end
 
-local imageUrl = "rbxassetid://72447234301333"
-local fireDecalId = "rbxassetid://14661356874"
-
+-- Notificações (protegidas)
 local function Notify(msg)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
             Title = "Yoriichi Menu",
             Text = msg,
-            Duration = 4
+            Duration = 3
         })
     end)
 end
 
-Notify("Bem vindo ao script Yoriichi menu")
+Notify("Bem vindo ao script Yoriichi menu (corrigido)")
 
+-- Cria ScreenGui no PlayerGui (mais compatível)
 local sg = Instance.new("ScreenGui")
 sg.Name = "YoriichiMenuUI"
-sg.ResetOnSpawn = false
 sg.IgnoreGuiInset = true
-sg.Parent = game:GetService("CoreGui")
+sg.ResetOnSpawn = false
+sg.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- TORNAR QUALQUER FRAME DRAGGABLE (inclusive mobile)
+-- Helpers de UI
+local function newUICorner(parent, radius)
+    radius = radius or UDim.new(0,14)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = radius
+    c.Parent = parent
+    return c
+end
+
+local function newUIStroke(parent, color, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(0,0,0)
+    s.Thickness = thickness or 2
+    s.Parent = parent
+    return s
+end
+
+local function animateRGB(label)
+    spawn(function()
+        local t = 0
+        while label and label.Parent do
+            label.TextColor3 = Color3.fromHSV((t % 1), 0.8, 1)
+            t = t + 0.01
+            RunService.Heartbeat:Wait()
+        end
+    end)
+end
+
+local function styleButton(btn, colorBase, colorHover, textBase, textHover)
+    btn.BackgroundColor3 = colorBase
+    btn.TextColor3 = textBase
+    -- só aplicar hover se existir (evita problemas mobile)
+    if btn.MouseEnter and btn.MouseLeave then
+        btn.MouseEnter:Connect(function()
+            pcall(function() btn.BackgroundColor3 = colorHover; btn.TextColor3 = textHover end)
+        end)
+        btn.MouseLeave:Connect(function()
+            pcall(function() btn.BackgroundColor3 = colorBase; btn.TextColor3 = textBase end)
+        end)
+    end
+end
+
+-- Drag (suporta mouse e touch)
 local function makeDraggable(frame)
     local dragging = false
     local dragStart, startPos
 
     local function update(input)
+        if not dragStart or not startPos then return end
         local delta = input.Position - dragStart
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
@@ -50,10 +103,8 @@ local function makeDraggable(frame)
     end)
 
     frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            if dragging then
-                update(input)
-            end
+        if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then
+            update(input)
         end
     end)
 
@@ -64,51 +115,13 @@ local function makeDraggable(frame)
     end)
 end
 
-local function newUICorner(parent, radius)
-    local c = Instance.new("UICorner")
-    c.CornerRadius = radius or UDim.new(0, 14)
-    c.Parent = parent
-    return c
-end
-
-local function newUIStroke(parent, color, thickness)
-    local s = Instance.new("UIStroke")
-    s.Color = color or Color3.fromRGB(0,0,0)
-    s.Thickness = thickness or 2
-    s.Parent = parent
-    return s
-end
-
-local function animateRGB(textLabel)
-    spawn(function()
-        local t = 0
-        while textLabel and textLabel.Parent do
-            textLabel.TextColor3 = Color3.fromHSV((t % 1), 0.8, 1)
-            t = t + 0.01
-            RunService.Heartbeat:Wait()
-        end
-    end)
-end
-
-local function styleButton(btn, colorBase, colorHover, textBase, textHover)
-    btn.BackgroundColor3 = colorBase
-    btn.TextColor3 = textBase
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = colorHover
-        btn.TextColor3 = textHover
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = colorBase
-        btn.TextColor3 = textBase
-    end)
-end
-
-local mainWidth = 560
-local mainHeight = 380
+-- MAIN WINDOW (dimensões)
+local mainWidth, mainHeight = 560, 380
 local main = Instance.new("Frame")
 main.Name = "MainWindow"
 main.Size = UDim2.fromOffset(mainWidth, mainHeight)
 main.Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)
+main.AnchorPoint = Vector2.new(0,0)
 main.BackgroundTransparency = 1
 main.BorderSizePixel = 0
 main.Active = true
@@ -118,11 +131,8 @@ local mainBg = Instance.new("Frame", main)
 mainBg.Size = UDim2.fromScale(1, 1)
 mainBg.BackgroundColor3 = Color3.fromRGB(67, 9, 17)
 mainBg.BorderSizePixel = 0
-mainBg.BackgroundTransparency = 0
-mainBg.Active = true
-mainBg.Selectable = true
 newUICorner(mainBg, UDim.new(0, 24))
-newUIStroke(mainBg)
+newUIStroke(mainBg, Color3.fromRGB(30,10,12), 2)
 
 local grad = Instance.new("UIGradient", mainBg)
 grad.Rotation = 90
@@ -132,35 +142,33 @@ grad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(67, 9, 17))
 })
 
+-- Decorative image (se quiser trocar, ajuste imageUrl)
+local imageUrl = "rbxassetid://72447234301333"
+local fireDecalId = "rbxassetid://14661356874"
 local fire = Instance.new("ImageLabel", mainBg)
 fire.Image = fireDecalId
 fire.BackgroundTransparency = 1
 fire.Size = UDim2.new(1, 0, 0.16, 0)
 fire.Position = UDim2.new(0, 0, 0.84, 0)
-fire.ZIndex = 2
 
+-- Title
 local title = Instance.new("TextLabel", mainBg)
 title.Text = "Yoriichi Menu"
 title.Size = UDim2.new(1, 0, 0, 46)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
-title.TextStrokeTransparency = 0.4
-title.TextStrokeColor3 = Color3.new(0,0,0)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 38
 title.TextXAlignment = Enum.TextXAlignment.Center
-title.ZIndex = 12
 animateRGB(title)
 
+-- Tab bar
 local tabBar = Instance.new("Frame", mainBg)
 tabBar.Name = "TabBar"
 tabBar.Size = UDim2.new(1, -40, 0, 40)
 tabBar.Position = UDim2.new(0, 20, 0, 48)
 tabBar.BackgroundTransparency = 1
 tabBar.BorderSizePixel = 0
-tabBar.ZIndex = 10
-tabBar.Active = true
-tabBar.Selectable = true
 
 local tabNames = {"Universal", "Rng Civilizacion"}
 local tabButtons = {}
@@ -170,25 +178,19 @@ local universalPage = Instance.new("Frame", mainBg)
 universalPage.Name = "UniversalPage"
 universalPage.Size = UDim2.new(1, -40, 1, -110)
 universalPage.Position = UDim2.new(0, 20, 0, 88)
-universalPage.BackgroundTransparency = 0
 universalPage.BackgroundColor3 = Color3.fromRGB(97, 11, 33)
-universalPage.ZIndex = 12
 newUICorner(universalPage, UDim.new(0, 18))
 universalPage.Visible = true
 universalPage.Active = true
-universalPage.Selectable = true
 
 local rngPage = Instance.new("Frame", mainBg)
 rngPage.Name = "RNGPage"
 rngPage.Size = UDim2.new(1, -40, 1, -110)
 rngPage.Position = UDim2.new(0, 20, 0, 88)
-rngPage.BackgroundTransparency = 0
 rngPage.BackgroundColor3 = Color3.fromRGB(97, 11, 33)
-rngPage.ZIndex = 12
 newUICorner(rngPage, UDim.new(0, 18))
 rngPage.Visible = false
 rngPage.Active = true
-rngPage.Selectable = true
 
 local function selectTab(idx)
     selectedTab = idx
@@ -205,10 +207,10 @@ local function selectTab(idx)
     rngPage.Visible = (idx == 2)
 end
 
-for i, tabName in ipairs(tabNames) do
+for i, name in ipairs(tabNames) do
     local btn = Instance.new("TextButton", tabBar)
-    btn.Name = tabName.."TabBtn"
-    btn.Text = tabName
+    btn.Name = name.."TabBtn"
+    btn.Text = name
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 20
     btn.Size = UDim2.new(0.47, 0, 0, 34)
@@ -217,34 +219,27 @@ for i, tabName in ipairs(tabNames) do
     btn.ZIndex = 11
     btn.AutoButtonColor = false
     btn.Active = true
-    btn.Selectable = true
-    newUICorner(btn, UDim.new(1, 0))
+    newUICorner(btn, UDim.new(1,0))
     styleButton(btn, Color3.fromRGB(97,11,33), Color3.fromRGB(180,34,59), Color3.fromRGB(220,220,220), Color3.fromRGB(255,255,255))
-    btn.MouseButton1Click:Connect(function()
-        selectTab(i)
-    end)
-    btn.TouchTap:Connect(function()
-        selectTab(i)
-    end)
+    btn.Activated:Connect(function() selectTab(i) end)
     tabButtons[i] = btn
 end
 
--- DRAGGABLE: menu principal e mini
+-- Render drag
 makeDraggable(main)
 makeDraggable(mainBg)
 
+-- Minimize and Close (top-right)
 local minBtn = Instance.new("TextButton", mainBg)
 minBtn.Text = "-"
 minBtn.Font = Enum.Font.GothamBold
 minBtn.TextSize = 22
 minBtn.Size = UDim2.new(0,36,0,28)
 minBtn.Position = UDim2.new(1, -84, 0, 8)
-styleButton(minBtn, Color3.fromRGB(97,11,33), Color3.fromRGB(180,34,59), Color3.fromRGB(220,220,220), Color3.fromRGB(255,255,255))
 minBtn.BorderSizePixel = 0
 minBtn.ZIndex = 13
-minBtn.AutoButtonColor = false
+minBtn.AutoButtonColor = true
 minBtn.Active = true
-minBtn.Selectable = true
 newUICorner(minBtn, UDim.new(1, 0))
 newUIStroke(minBtn, Color3.fromRGB(67, 9, 17), 1)
 
@@ -254,69 +249,93 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 21
 closeBtn.Size = UDim2.new(0,36,0,28)
 closeBtn.Position = UDim2.new(1, -44, 0, 8)
-styleButton(closeBtn, Color3.fromRGB(180,34,59), Color3.fromRGB(255, 80, 80), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255))
 closeBtn.BorderSizePixel = 0
 closeBtn.ZIndex = 13
-closeBtn.AutoButtonColor = false
+closeBtn.AutoButtonColor = true
 closeBtn.Active = true
-closeBtn.Selectable = true
 newUICorner(closeBtn, UDim.new(1, 0))
 newUIStroke(closeBtn, Color3.fromRGB(97,11,33), 1)
 
--- TOGGLE MENU: Tecla "M" (pode mudar se quiser)
+-- Fast tween helper (rápido e suave)
+local function tweenQuick(obj, props, time)
+    time = time or 0.18
+    local ok, t = pcall(function()
+        return TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
+    end)
+    if ok and t then t:Play() end
+end
+
+-- Mini-window (gerado ao minimizar)
+local function createMiniWindow()
+    if sg:FindFirstChild("MiniWindow") then return sg:FindFirstChild("MiniWindow") end
+    local miniFrame = Instance.new("Frame", sg)
+    miniFrame.Name = "MiniWindow"
+    miniFrame.Size = UDim2.new(0,56,0,56)
+    miniFrame.Position = UDim2.new(0, 16, 0.6, 0)
+    miniFrame.BackgroundColor3 = Color3.fromRGB(180, 34, 59)
+    miniFrame.BorderSizePixel = 0
+    newUICorner(miniFrame, UDim.new(0, 18))
+    newUIStroke(miniFrame, Color3.fromRGB(67, 9, 17), 2)
+    miniFrame.ZIndex = 999
+    local miniImage = Instance.new("ImageButton", miniFrame)
+    miniImage.Size = UDim2.new(0.82,0,0.82,0)
+    miniImage.Position = UDim2.new(0.09,0,0.09,0)
+    miniImage.BackgroundTransparency = 1
+    miniImage.Image = imageUrl
+    miniImage.AutoButtonColor = true
+    newUICorner(miniImage, UDim.new(1,0))
+    makeDraggable(miniFrame)
+    miniImage.Activated:Connect(function()
+        if sg:FindFirstChild("MiniWindow") then sg:FindFirstChild("MiniWindow"):Destroy() end
+        main.Visible = true
+        tweenQuick(main, {Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)}, 0.18)
+    end)
+    return miniFrame
+end
+
+-- Close behavior (fast)
+closeBtn.Activated:Connect(function()
+    -- quick shrink + destroy
+    -- proteger caso já destruído
+    pcall(function()
+        tweenQuick(main, {Size = UDim2.new(0,0,0,0)}, 0.12)
+        task.wait(0.12)
+        if sg and sg.Parent then sg:Destroy() end
+    end)
+end)
+
+-- Minimize behavior: cria mini janela pra restaurar
+minBtn.Activated:Connect(function()
+    -- se já minimizado, restaura
+    if sg:FindFirstChild("MiniWindow") then
+        local mini = sg:FindFirstChild("MiniWindow")
+        mini:Destroy()
+        main.Visible = true
+        tweenQuick(main, {Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)}, 0.18)
+        return
+    end
+
+    -- animate main out and create mini
+    tweenQuick(main, {Position = UDim2.new(0.02, 0, 0.6, 0)}, 0.12)
+    task.wait(0.12)
+    main.Visible = false
+    createMiniWindow()
+end)
+
+-- Toggle menu with M (compatível)
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.M then
         main.Visible = not main.Visible
-        if sg:FindFirstChild("MiniWindow") then
-            sg:FindFirstChild("MiniWindow").Visible = not main.Visible
+        if main.Visible and sg:FindFirstChild("MiniWindow") then
+            sg:FindFirstChild("MiniWindow"):Destroy()
         end
     end
 end)
 
-minBtn.MouseButton1Click:Connect(function()
-    main.Visible = false
-    if not sg:FindFirstChild("MiniWindow") then
-        local miniFrame = Instance.new("Frame", sg)
-        miniFrame.Name = "MiniWindow"
-        miniFrame.Size = UDim2.new(0,56,0,56)
-        miniFrame.Position = UDim2.new(0, 16, 0.6, 0)
-        miniFrame.BackgroundColor3 = Color3.fromRGB(180, 34, 59)
-        miniFrame.BorderSizePixel = 0
-        miniFrame.ZIndex = 99
-        miniFrame.Active = true
-        miniFrame.Selectable = true
-        newUICorner(miniFrame, UDim.new(0, 18))
-        newUIStroke(miniFrame, Color3.fromRGB(67, 9, 17), 2)
-        local miniImage = Instance.new("ImageButton", miniFrame)
-        miniImage.Size = UDim2.new(0.82,0,0.82,0)
-        miniImage.Position = UDim2.new(0.09,0,0.09,0)
-        miniImage.BackgroundTransparency = 1
-        miniImage.Image = imageUrl
-        miniImage.ScaleType = Enum.ScaleType.Crop
-        miniImage.AutoButtonColor = true
-        miniImage.ZIndex = 100
-        newUICorner(miniImage, UDim.new(1, 0))
-        makeDraggable(miniFrame)
-        miniImage.MouseButton1Click:Connect(function()
-            sg:FindFirstChild("MiniWindow"):Destroy()
-            main.Visible = true
-        end)
-        miniImage.ImageColor3 = Color3.fromRGB(180,34,59)
-    end
-    if sg:FindFirstChild("MiniWindow") then
-        sg:FindFirstChild("MiniWindow").Visible = true
-    end
-end)
-
-closeBtn.MouseButton1Click:Connect(function()
-    if sg:FindFirstChild("MiniWindow") then
-        sg:FindFirstChild("MiniWindow"):Destroy()
-    end
-    sg:Destroy()
-end)
-
--- Universal Funções
+-- ---------------------------
+-- Universal funções (Correr/Pular)
+-- ---------------------------
 local runBtn = Instance.new("TextButton", universalPage)
 runBtn.Name = "RunFastBtn"
 runBtn.Text = "Correr Rápido"
@@ -326,9 +345,9 @@ runBtn.Size = UDim2.new(0.8, 0, 0, 50)
 runBtn.Position = UDim2.new(0.1, 0, 0, 30)
 styleButton(runBtn, Color3.fromRGB(180,34,59), Color3.fromRGB(255, 80, 80), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255))
 runBtn.BorderSizePixel = 0
-runBtn.ZIndex = 13
 newUICorner(runBtn, UDim.new(0, 12))
 newUIStroke(runBtn, Color3.fromRGB(67, 9, 17), 2)
+runBtn.ZIndex = 13
 runBtn.AutoButtonColor = true
 
 local jumpBtn = Instance.new("TextButton", universalPage)
@@ -340,9 +359,9 @@ jumpBtn.Size = UDim2.new(0.8, 0, 0, 50)
 jumpBtn.Position = UDim2.new(0.1, 0, 0, 90)
 styleButton(jumpBtn, Color3.fromRGB(180,34,59), Color3.fromRGB(255, 80, 80), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255))
 jumpBtn.BorderSizePixel = 0
-jumpBtn.ZIndex = 13
 newUICorner(jumpBtn, UDim.new(0, 12))
 newUIStroke(jumpBtn, Color3.fromRGB(67, 9, 17), 2)
+jumpBtn.ZIndex = 13
 jumpBtn.AutoButtonColor = true
 
 local fastActive = false
@@ -355,10 +374,10 @@ local function setSpeed(enable)
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if humanoid then
         if enable then
-            origWalkSpeed = humanoid.WalkSpeed
+            origWalkSpeed = humanoid.WalkSpeed or origWalkSpeed
             humanoid.WalkSpeed = 65
         else
-            humanoid.WalkSpeed = origWalkSpeed
+            humanoid.WalkSpeed = origWalkSpeed or 16
         end
     end
 end
@@ -368,22 +387,22 @@ local function setJump(enable)
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if humanoid then
         if enable then
-            origJumpPower = humanoid.JumpPower
+            origJumpPower = humanoid.JumpPower or origJumpPower
             humanoid.JumpPower = 135
         else
-            humanoid.JumpPower = origJumpPower
+            humanoid.JumpPower = origJumpPower or 50
         end
     end
 end
 
-runBtn.MouseButton1Click:Connect(function()
+runBtn.Activated:Connect(function()
     fastActive = not fastActive
     setSpeed(fastActive)
     runBtn.Text = fastActive and "Correr Rápido (ON)" or "Correr Rápido"
     Notify(fastActive and "Velocidade aumentada!" or "Velocidade normal!")
 end)
 
-jumpBtn.MouseButton1Click:Connect(function()
+jumpBtn.Activated:Connect(function()
     jumpActive = not jumpActive
     setJump(jumpActive)
     jumpBtn.Text = jumpActive and "Pular Alto (ON)" or "Pular Alto"
@@ -396,7 +415,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     setJump(jumpActive)
 end)
 
--- RNG CIVILIZACION
+-- ---------------------------
+-- RNG CIVILIZACION (TP + Auto Botão switch)
+-- ---------------------------
 local tpBtn = Instance.new("TextButton", rngPage)
 tpBtn.Name = "TpAetherButton"
 tpBtn.Text = "Tp Aether"
@@ -417,26 +438,36 @@ local aetherCFrame = CFrame.new(
     5.55547466e-08, 1, 3.76220406e-08,
     -0.168540359, -2.69409566e-08, 0.985694766
 )
-tpBtn.MouseButton1Click:Connect(function()
+
+tpBtn.Activated:Connect(function()
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
         root.CFrame = aetherCFrame + Vector3.new(0, 3, 0)
         Notify("Teleportado para o Aether!")
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-        end
+        if humanoid then pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end) end
     else
         Notify("Não foi possível teleportar.")
     end
 end)
 
--- auto botão (substitui o antigo Farm Aether)
+-- Função de farm (teleport + click)
+local function findGamblingFolder()
+    local f = Workspace:FindFirstChild("LETS GO GAMBLING")
+    if f then return f end
+    -- tentativa alternativa (case-insensitive)
+    for _,v in ipairs(Workspace:GetChildren()) do
+        if v:IsA("Folder") and v.Name:lower():find("gambling") then
+            return v
+        end
+    end
+    return nil
+end
+
 local function teleportAndClickAllButtons()
-    local workspace = game:GetService("Workspace")
-    local gamblingFolder = workspace:FindFirstChild("LETS GO GAMBLING")
-    if not gamblingFolder then
+    local folder = findGamblingFolder()
+    if not folder then
         Notify("Pasta 'LETS GO GAMBLING' não encontrada!")
         return
     end
@@ -445,13 +476,13 @@ local function teleportAndClickAllButtons()
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then Notify("Sem HumanoidRootPart!"); return end
 
-    local originalPosition = hrp.Position
-
+    local originalCFrame = hrp.CFrame
     local buttonParts = {}
-    for _, portable in ipairs(gamblingFolder:GetChildren()) do
-        if portable:IsA("Model") then
-            local buttonPart = portable:FindFirstChild("Button")
-            if buttonPart and (buttonPart:IsA("Part") or buttonPart:IsA("MeshPart")) then
+
+    for _, portable in ipairs(folder:GetChildren()) do
+        if portable:IsA("Model") or portable:IsA("Folder") then
+            local buttonPart = portable:FindFirstChild("Button") or portable:FindFirstChildWhichIsA("BasePart")
+            if buttonPart and buttonPart:IsA("BasePart") then
                 table.insert(buttonParts, buttonPart)
             end
         end
@@ -463,46 +494,77 @@ local function teleportAndClickAllButtons()
     end
 
     for _, buttonPart in ipairs(buttonParts) do
-        hrp.CFrame = CFrame.new(buttonPart.Position + Vector3.new(0, 3, 0))
+        pcall(function()
+            hrp.CFrame = (buttonPart.CFrame or CFrame.new(buttonPart.Position)) + Vector3.new(0, 3, 0)
+        end)
         for _, child in ipairs(buttonPart:GetChildren()) do
             if child:IsA("ClickDetector") then
-                fireclickdetector(child)
+                pcall(function() fireclickdetector(child) end)
             end
         end
-        wait(0.05)
+        task.wait(0.06)
     end
 
-    hrp.CFrame = CFrame.new(originalPosition)
+    pcall(function() hrp.CFrame = originalCFrame end)
     Notify("Todos os botões foram clicados!")
 end
 
-local autoBtn = Instance.new("TextButton", rngPage)
-autoBtn.Name = "AutoBotaoButton"
-autoBtn.Text = "auto botão"
-autoBtn.Font = Enum.Font.GothamBold
-autoBtn.TextSize = 20
-autoBtn.Size = UDim2.new(0.7, 0, 0, 44)
-autoBtn.Position = UDim2.new(0.15, 0, 1, -62)
-autoBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoBtn.BorderSizePixel = 0
-autoBtn.ZIndex = 15
-autoBtn.AutoButtonColor = true
-autoBtn.Active = true
-autoBtn.Selectable = true
-newUICorner(autoBtn, UDim.new(0, 12))
-newUIStroke(autoBtn, Color3.fromRGB(0,170,255), 2)
+-- SWITCH AUTO BOTÃO (com Activated -> 1 clique/tap)
+local autoSwitch = Instance.new("TextButton", rngPage)
+autoSwitch.Name = "AutoSwitch"
+autoSwitch.Text = "Auto Botão (OFF)"
+autoSwitch.Font = Enum.Font.GothamBold
+autoSwitch.TextSize = 20
+autoSwitch.Size = UDim2.new(0.7, 0, 0, 44)
+autoSwitch.Position = UDim2.new(0.15, 0, 1, -62)
+autoSwitch.BackgroundColor3 = Color3.fromRGB(97,11,33)
+autoSwitch.TextColor3 = Color3.fromRGB(220,220,220)
+autoSwitch.BorderSizePixel = 0
+autoSwitch.ZIndex = 15
+autoSwitch.AutoButtonColor = false
+newUICorner(autoSwitch, UDim.new(0, 12))
+newUIStroke(autoSwitch, Color3.fromRGB(180,34,59), 2)
 
-autoBtn.MouseButton1Click:Connect(function()
-    autoBtn.Text = "Executando..."
-    teleportAndClickAllButtons()
-    autoBtn.Text = "auto botão"
+local autoEnabled = false
+
+local function toggleAuto()
+    autoEnabled = not autoEnabled
+    if autoEnabled then
+        autoSwitch.Text = "Auto Botão (ON)"
+        autoSwitch.BackgroundColor3 = Color3.fromRGB(180,34,59)
+        autoSwitch.TextColor3 = Color3.fromRGB(255,255,255)
+        Notify("Auto Botão ligado!")
+    else
+        autoSwitch.Text = "Auto Botão (OFF)"
+        autoSwitch.BackgroundColor3 = Color3.fromRGB(97,11,33)
+        autoSwitch.TextColor3 = Color3.fromRGB(220,220,220)
+        Notify("Auto Botão desligado!")
+    end
+end
+
+-- usa Activated (união de click/touch/gamepad) -> não precisa segurar
+autoSwitch.Activated:Connect(toggleAuto)
+
+-- Loop do auto (rode no background)
+task.spawn(function()
+    while true do
+        if autoEnabled then
+            -- chama a função protegida
+            pcall(teleportAndClickAllButtons)
+            -- aguarda um intervalo curto, ajustável
+            task.wait(1)
+        else
+            task.wait(0.2)
+        end
+    end
 end)
 
+-- Final touches: animação de entrada e seleção de tab inicial
 main.Visible = false
-task.wait(0.15)
+task.wait(0.12)
 main.Visible = true
-main.Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)
-TweenService:Create(main, TweenInfo.new(0.62, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)}):Play()
-
+tweenQuick(main, {Position = UDim2.new(0.5, -mainWidth/2, 0.45, -mainHeight/2)}, 0.62)
 selectTab(1)
+
+-- Fim do script
+Notify("Script carregado corretamente — pronto para uso!")
